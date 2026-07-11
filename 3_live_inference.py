@@ -24,12 +24,20 @@ hands = mp_hands.Hands(
 cap = cv2.VideoCapture(2, cv2.CAP_DSHOW)
 
 # ==========================================
-# MESIN SUARA ASINKRON (KATA UTUH)
+# MESIN SUARA ASINKRON (KATA UTUH - INDONESIA)
 # ==========================================
 def speak_text(text):
     def run_tts():
         tts = pyttsx3.init()
-        tts.setProperty('rate', 150)
+        tts.setProperty('rate', 140) # Sedikit diperlambat agar pelafalannya jelas
+        
+        # Mencari dan mengaktifkan suara Bahasa Indonesia
+        voices = tts.getProperty('voices')
+        for voice in voices:
+            if 'Indonesian' in voice.name or 'ID' in voice.id or 'Andika' in voice.name or 'Gadis' in voice.name:
+                tts.setProperty('voice', voice.id)
+                break
+                
         tts.say(text)
         tts.runAndWait()
     threading.Thread(target=run_tts, daemon=True).start()
@@ -50,6 +58,8 @@ SPACE_TIMEOUT_FRAMES = 30
 index_path_x = collections.deque(maxlen=20) 
 force_z_frames = 0
 Z_SWEEP_THRESHOLD = 0.15 # Seberapa lebar tarikan garis Z di layar
+cooldown_frames = 0 # Jeda waktu agar AI buta sementara setelah mengetik huruf spesial
+COOLDOWN_LIMIT = 20 # Durasi buta (sekitar 1 detik)
 # Variabel FSM Khusus J (Pinky Tracking)
 pinky_path = collections.deque(maxlen=30) # Mengingat posisi kelingking 30 frame ke belakang
 force_j_frames = 0 # Durasi paksaan (State Lock) untuk membajak sistem
@@ -101,43 +111,54 @@ while cap.isOpened():
            # Ambil koordinat UJUNG TELUNJUK (Index 8) absolut
             index_x = hand_landmarks.landmark[8].x
 
-            # FSM JEBAKAN HURUF Z (TRACKING TELUNJUK)
-            if force_z_frames > 0:
-                predicted_class = 'Z'
-                confidence = 99.0
-                force_z_frames -= 1
-                index_path_x.clear()
+            # ==========================================
+            # FSM JEBAKAN HURUF Z (INSTANT BYPASS)
+            # ==========================================
+            if cooldown_frames > 0:
+                # KAMERA DIBUTAKAN SEMENTARA
+                cooldown_frames -= 1
+                predicted_class = 'Menunggu...'
+                confidence = 0.0
+                last_char = None
+                frames_held = 0
             else:
-                # Karena Z menggunakan pose D, pemicunya adalah 'D'
                 if predicted_class == 'D':
                     index_path_x.append(index_x)
                     
                     if len(index_path_x) > 15:
-                        # Cari titik paling kiri dan paling kanan dari jejak telunjuk
                         min_x = min(index_path_x)
                         max_x = max(index_path_x)
                         
-                        # Jika selisihnya (lebar zig-zag) melampaui threshold
                         if (max_x - min_x) > Z_SWEEP_THRESHOLD:
-                            # Tambahan + 5 frame agar loading bar pengetikan punya waktu untuk penuh
-                            force_z_frames = REQUIRED_FRAMES + 5 
+                            # 1. RETROACTIVE WIPE: Hapus 'D' prematur di ujung kata
+                            if len(current_word) > 0 and current_word[-1] == 'D':
+                                current_word = current_word[:-1]
+                            
+                            # 2. INSTANT INJECT: Langsung masukkan Z tanpa loading bar!
+                            current_word += 'Z'
+                            
+                            # 3. AKTIFKAN COOLDOWN: Butakan AI agar sisa jari 'D' tidak terketik
+                            cooldown_frames = COOLDOWN_LIMIT
+                            index_path_x.clear()
                 else:
                     index_path_x.clear()
 
             # ==========================================
-            # LOGIKA DEBOUNCE PENGETIKAN
+            # LOGIKA DEBOUNCE PENGETIKAN NORMAL
             # ==========================================
-            if predicted_class != '0' and confidence > 75.0:
-                if predicted_class == last_char:
-                    frames_held += 1
-                    if frames_held == REQUIRED_FRAMES:
-                        current_word += predicted_class 
+            # Hanya jalankan pengetikan normal jika sistem tidak sedang Cooldown
+            if cooldown_frames == 0:
+                if predicted_class != '0' and confidence > 75.0:
+                    if predicted_class == last_char:
+                        frames_held += 1
+                        if frames_held == REQUIRED_FRAMES:
+                            current_word += predicted_class 
+                    else:
+                        last_char = predicted_class
+                        frames_held = 0
                 else:
-                    last_char = predicted_class
+                    last_char = None
                     frames_held = 0
-            else:
-                last_char = None
-                frames_held = 0
 
             # --- Visualisasi UI Radar ---
             color = (0, 0, 255) if predicted_class == '0' or confidence < 75.0 else (0, 255, 0)
@@ -159,8 +180,26 @@ while cap.isOpened():
         last_char = None
         frames_held = 0
 
-    cv2.putText(frame, f"Kata: {current_word}", (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 0), 2)
-    cv2.putText(frame, f"Kalimat: {sentence}", (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+    # ==========================================
+    # RENDER UI (SEMI-TRANSPARENT OVERLAY)
+    # ==========================================
+    # Buat salinan frame untuk layar transparan
+    overlay = frame.copy()
+    
+    # Gambar kotak hitam di bagian atas (Untuk Radar Biasa)
+    cv2.rectangle(overlay, (0, 0), (640, 50), (0, 0, 0), -1)
+    
+    # Gambar kotak hitam di bagian bawah (Untuk Kata & Kalimat)
+    cv2.rectangle(overlay, (0, 380), (640, 480), (0, 0, 0), -1)
+    
+    # Gabungkan overlay dengan frame asli (Alpha 0.6 = 60% Transparan)
+    frame = cv2.addWeighted(overlay, 0.6, frame, 0.4, 0)
+
+    # Tulis teks putih di atas area hitam tersebut agar sangat kontras
+    cv2.putText(frame, f"Kata    : {current_word}", (10, 415), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+    cv2.putText(frame, f"Kalimat : {sentence}", (10, 455), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+    # (Pastikan kamu menghapus cv2.putText kata dan kalimat yang lama agar tidak menumpuk)
+
 
     cv2.imshow('ASL Live Inference (SVM)', frame)
 

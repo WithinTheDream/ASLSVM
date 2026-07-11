@@ -9,7 +9,7 @@ df = pd.read_csv(file_name)
 jumlah_awal = len(df)
 
 # 3. Tentukan target operasi penghapusan
-target_hapus = ['R', 'U', 'V', 'N', 'S']
+target_hapus = []
 
 # 4. Filter data: Ambil semua baris yang labelnya TIDAK ADA di daftar target_hapus
 df_bersih = df[~df['label'].isin(target_hapus)]
