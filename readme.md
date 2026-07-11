@@ -1,37 +1,32 @@
-# ASL Vision Pipeline (Desktop Prototype)
+# 🤟 ASL AI Translator - Pro Edition
 
-This repository contains a desktop prototype of a Computer Vision system for real-time American Sign Language (ASL) recognition. The system combines spatial hand landmark extraction with a Support Vector Machine (SVM) classifier to recognize ASL hand gestures.
+A desktop application powered by **Computer Vision** and **Machine Learning** that translates American Sign Language (ASL) into text and speech in real time. This project uses **Support Vector Machine (SVM)** for gesture classification and **MediaPipe** for hand landmark extraction.
 
-This prototype isolates the Machine Learning pipeline from mobile application development, allowing the model to be trained, tested, and validated independently before integration into the final application.
+## ✨ Key Features
 
-## System Architecture
+- **Real-time ASL Detection:** Recognizes static ASL letters with high accuracy using a lightweight and fast SVM model.
+- **FSM (Finite State Machine) for Dynamic Letters:** Implements a sweep detection algorithm to recognize dynamic ASL letters such as **'Z'**.
+- **Smart Debouncer & Auto Spacing:** A smart typing algorithm that outputs a letter only after it has been held steady for several frames, and automatically inserts spaces when the hand is removed from the camera.
+- **Text-to-Speech (TTS):** Uses the Windows **SAPI5** speech engine to pronounce detected letters and words asynchronously without blocking the camera thread.
+- **Modern GUI:** A Cyberpunk-inspired dark mode interface built with `CustomTkinter`, featuring camera switching and mirror mode.
 
-The system employs a **Wrist-Centric Normalization** technique. Instead of feeding raw image pixels into the model, it extracts 21 three-dimensional (X, Y, Z) hand landmarks using **MediaPipe**. All landmark coordinates are normalized relative to landmark 0 (the wrist), making the model robust to variations in hand position and distance from the camera.
+## 🛠️ Tech Stack
 
-The prediction model is based on a **Support Vector Machine (SVM)** with an RBF kernel. This approach effectively classifies high-dimensional spatial landmark data while maintaining strong generalization performance without requiring an extremely large dataset.
+- **Language:** Python 3.11+
+- **Computer Vision:** OpenCV, Google MediaPipe (Hands)
+- **Machine Learning:** Scikit-learn (Support Vector Machine)
+- **Desktop GUI:** CustomTkinter, Pillow (PIL)
+- **Text-to-Speech:** pyttsx3 (SAPI5)
+- **Packaging:** PyInstaller
 
-## Project Structure
+## 🚀 Getting Started (Development)
 
-- `1_data_collector.py`  
-  Captures hand landmarks from a webcam in real time and stores them in a CSV dataset. Includes automatic mirror calibration.
+### 1. Clone the repository
 
-- `2_train_model.py`  
-  Trains the SVM classifier, performs automatic class balancing through undersampling, and evaluates the model using a confusion matrix.
-
-- `3_live_inference.py`  
-  Runs real-time ASL recognition using the trained `.pkl` model on live webcam input. Includes "Nothing" and "Unknown Gesture" detection using probability thresholds.
-
-- `dataset_asl_bersih.csv`  
-  The extracted hand landmark dataset used for training.
-
-- `svm_asl_model.pkl`  
-  The trained SVM model ready for real-time inference.
-
-## Getting Started
-
-### 1. Install Python
-
-Make sure Python 3.10 or later is installed on your system.
+```bash
+git clone https://github.com/WithinTheDream/ASLSVM.git
+cd ASLSVM
+```
 
 ### 2. Create and activate a virtual environment
 
@@ -41,57 +36,48 @@ python -m venv venv
 # Windows
 venv\Scripts\activate
 
-# macOS / Linux
+# Linux/macOS
 source venv/bin/activate
 ```
 
-### 3. Install dependencies
+### 3. Install the dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Running the Pipeline
+Make sure the following packages are installed:
 
-### Step 1 – Collect Dataset
+- opencv-python
+- mediapipe
+- scikit-learn
+- customtkinter
+- pyttsx3
+- Pillow
+- numpy
 
-```bash
-python 1_data_collector.py
-```
-
-### Step 2 – Train the Model
-
-```bash
-python 2_train_model.py
-```
-
-### Step 3 – Run Real-Time Inference
+### 4. Run the application
 
 ```bash
-python 3_live_inference.py
+python desktop_app.py
 ```
 
-## Technologies Used
+## 📦 Building the Executable (.exe)
 
-- Python
-- OpenCV
-- MediaPipe
-- NumPy
-- Pandas
-- Scikit-learn
-- Joblib
+To package the application into a standalone Windows executable, run the following command inside your virtual environment:
 
-## Model Performance
+```bash
+pyinstaller --onefile --noconsole --clean --collect-all customtkinter --hidden-import pyttsx3.drivers.sapi5 desktop_app.py
+```
 
-The SVM classifier was evaluated using:
+> **Important:** After the build process is complete, the executable will be located in the `dist/` folder. Copy the `svm_asl_model.pkl` file into the same folder as the executable before running the application.
 
-- Confusion Matrix
-- Precision
-- Recall
-- F1-Score
+## 🧠 Project Structure
 
-The final model achieved an accuracy of over **90%** on the test dataset.
-
-## License
-
-This project is intended for academic and research purposes.
+| File | Description |
+|------|-------------|
+| `1_data_collector.py` | Collects hand landmark data from the webcam and saves it as a CSV dataset. |
+| `2_train_model.py` | Trains the SVM model using the collected CSV dataset. |
+| `3_live_inference.py` | Prototype script for real-time ASL detection using OpenCV. |
+| `desktop_app.py` | Main production application with a CustomTkinter GUI. |
+| `svm_asl_model.pkl` | The trained machine learning model used for ASL recognition. |
