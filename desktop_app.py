@@ -35,12 +35,14 @@ def resource_path(relative_path):
 # ==========================================
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
+ctk.set_widget_scaling(1.0)
+ctk.set_window_scaling(1.0)
 
 # Palet warna kustom — satu aksen utama + warna semantik seperlunya
 COL_BG          = "#0b0d13"
 COL_CARD        = "#141722"
 COL_CARD_BORDER = "#242838"
-COL_ACCENT      = "#7C5CFF"   # ungu modern — warna utama
+COL_ACCENT      = "#7C5CFF"
 COL_ACCENT_DIM  = "#332966"
 COL_TEXT_MUTED  = "#8890a3"
 COL_SUCCESS     = "#3ddc97"
@@ -100,9 +102,10 @@ TEXTS = {
 class ASLDesktopApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("ASL AI Translator - Pro Edition")
-        self.root.geometry("1060x850")
-        self.root.resizable(False, False)
+        self.root.title("ASL Translator")
+        self.root.geometry("1060x740")
+        self.root.minsize(900, 650)
+        self.root.resizable(True, True)
         self.root.configure(fg_color=COL_BG)
 
         # 1. Inisialisasi Model AI
@@ -218,23 +221,24 @@ class ASLDesktopApp:
 
             time.sleep(0.05)
 
-    # ==========================================
-    # UI SETUP (TAMPILAN BARU)
-    # ==========================================
     def setup_ui(self):
+        # ---------- PENGATURAN WINDOW ----------
+        self.root.resizable(True, True) 
+        self.root.minsize(960, 680) 
+
         # ---------- HEADER ----------
-        header = ctk.CTkFrame(self.root, width=1020, height=68, corner_radius=14,
-                               fg_color=COL_CARD, border_width=1, border_color=COL_CARD_BORDER)
-        header.place(x=20, y=15)
+        header = ctk.CTkFrame(self.root, height=68, corner_radius=14, fg_color=COL_CARD, border_width=1, border_color=COL_CARD_BORDER)
+        header.pack(fill="x", padx=20, pady=(15, 10))
 
         ctk.CTkLabel(header, text="🤟", font=("Segoe UI Emoji", 24)).place(x=18, y=16)
-        ctk.CTkLabel(header, text="ASL AI Translator", font=("Segoe UI", 20, "bold"),
-                     text_color="white").place(x=56, y=10)
-        self.subtitle_label = ctk.CTkLabel(header, text="", font=("Segoe UI", 12),
-                                            text_color=COL_TEXT_MUTED)
+        ctk.CTkLabel(header, text="ASL Translator", font=("Segoe UI", 20, "bold"), text_color="white").place(x=56, y=10)
+        
+        self.subtitle_label = ctk.CTkLabel(header, text="", font=("Segoe UI", 12), text_color=COL_TEXT_MUTED)
         self.subtitle_label.place(x=56, y=39)
 
-        # Pemilih bahasa
+        self.status_pill = ctk.CTkLabel(header, text="", font=("Segoe UI", 13, "bold"), text_color=COL_DANGER)
+        self.status_pill.pack(side="right", padx=20, pady=24)
+        
         self.lang_switch = ctk.CTkSegmentedButton(
             header, values=["ID", "EN"], command=self.set_language,
             width=104, height=32, font=("Segoe UI", 12, "bold"), corner_radius=10,
@@ -243,131 +247,79 @@ class ASLDesktopApp:
             text_color="white"
         )
         self.lang_switch.set("ID")
-        self.lang_switch.place(x=700, y=18)
+        self.lang_switch.pack(side="right", padx=10, pady=18)
 
-        self.status_pill = ctk.CTkLabel(header, text="", font=("Segoe UI", 13, "bold"),
-                                         text_color=COL_DANGER)
-        self.status_pill.place(x=830, y=24)
+        # ---------- MAIN CONTENT (VIDEO + DASHBOARD) ----------
+        main_container = ctk.CTkFrame(self.root, fg_color="transparent")
+        main_container.pack(fill="both", expand=True, padx=20, pady=5)
 
-        # ---------- VIDEO FRAME (KIRI) ----------
-        PANEL_TOP = 100
-        PANEL_H = 560
+        # VIDEO FRAME (KIRI) - Akan melebar dan menyusut otomatis
+        self.video_frame = ctk.CTkFrame(main_container, corner_radius=16, fg_color=COL_CARD, border_width=2, border_color=COL_CARD_BORDER)
+        self.video_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
 
-        self.video_frame = ctk.CTkFrame(self.root, width=660, height=PANEL_H, corner_radius=16,
-                                         fg_color=COL_CARD, border_width=2, border_color=COL_CARD_BORDER)
-        self.video_frame.place(x=20, y=PANEL_TOP)
-
-        self.video_label = ctk.CTkLabel(self.video_frame, text="📷\n\nKamera Offline",
-                                         font=("Segoe UI", 22), text_color=COL_TEXT_MUTED,
-                                         justify="center")
+        self.video_label = ctk.CTkLabel(self.video_frame, text="📷\n\nKamera Offline", font=("Segoe UI", 22), text_color=COL_TEXT_MUTED, justify="center")
         self.video_label.place(relx=0.5, rely=0.5, anchor="center")
 
-        # ---------- DASHBOARD (KANAN) ----------
-        self.dashboard_frame = ctk.CTkFrame(self.root, width=320, height=PANEL_H, corner_radius=16,
-                                             fg_color=COL_CARD, border_width=1, border_color=COL_CARD_BORDER)
-        self.dashboard_frame.place(x=700, y=PANEL_TOP)
+        # DASHBOARD (KANAN) - Ukuran tetap agar tombol tidak berantakan
+        self.dashboard_frame = ctk.CTkFrame(main_container, width=320, corner_radius=16, fg_color=COL_CARD, border_width=1, border_color=COL_CARD_BORDER)
+        self.dashboard_frame.pack(side="right", fill="y")
+        self.dashboard_frame.pack_propagate(False) 
 
-        INNER_W = 276  # 320 - 22*2
+        INNER_W = 276  
 
-        self.live_detection_label = ctk.CTkLabel(self.dashboard_frame, text="", font=("Segoe UI", 13, "bold"),
-                                                   text_color=COL_TEXT_MUTED)
-        self.live_detection_label.place(x=22, y=18)
+        self.live_detection_label = ctk.CTkLabel(self.dashboard_frame, text="", font=("Segoe UI", 13, "bold"), text_color=COL_TEXT_MUTED)
+        self.live_detection_label.place(x=22, y=15)
 
-        # Kartu huruf besar
-        self.letter_card = ctk.CTkFrame(self.dashboard_frame, width=INNER_W, height=180, corner_radius=14,
-                                         fg_color=COL_BG, border_width=1, border_color=COL_CARD_BORDER)
-        self.letter_card.place(x=22, y=50)
+        self.letter_card = ctk.CTkFrame(self.dashboard_frame, width=INNER_W, height=150, corner_radius=14, fg_color=COL_BG, border_width=1, border_color=COL_CARD_BORDER)
+        self.letter_card.place(x=22, y=40)
 
-        self.letter_label = ctk.CTkLabel(self.letter_card, text="🤚", font=("Segoe UI Emoji", 64, "bold"),
-                                          text_color=COL_TEXT_MUTED)
+        self.letter_label = ctk.CTkLabel(self.letter_card, text="🤚", font=("Segoe UI Emoji", 64, "bold"), text_color=COL_TEXT_MUTED)
         self.letter_label.place(relx=0.5, rely=0.4, anchor="center")
 
-        self.confidence_label = ctk.CTkLabel(self.letter_card, text="",
-                                              font=("Segoe UI", 12), text_color=COL_TEXT_MUTED)
+        self.confidence_label = ctk.CTkLabel(self.letter_card, text="", font=("Segoe UI", 12), text_color=COL_TEXT_MUTED)
         self.confidence_label.place(relx=0.5, rely=0.82, anchor="center")
 
-        # Progress "hold"
-        self.hold_progress_label = ctk.CTkLabel(self.dashboard_frame, text="", font=("Segoe UI", 11, "bold"),
-                                                  text_color=COL_TEXT_MUTED)
-        self.hold_progress_label.place(x=22, y=248)
+        self.hold_progress_label = ctk.CTkLabel(self.dashboard_frame, text="", font=("Segoe UI", 11, "bold"), text_color=COL_TEXT_MUTED)
+        self.hold_progress_label.place(x=22, y=200)
 
-        self.progress_bar = ctk.CTkProgressBar(self.dashboard_frame, width=INNER_W, height=10,
-                                                corner_radius=5, progress_color=COL_ACCENT,
-                                                fg_color=COL_CARD_BORDER)
-        self.progress_bar.place(x=22, y=272)
+        self.progress_bar = ctk.CTkProgressBar(self.dashboard_frame, width=INNER_W, height=10, corner_radius=5, progress_color=COL_ACCENT, fg_color=COL_CARD_BORDER)
+        self.progress_bar.place(x=22, y=225)
         self.progress_bar.set(0.0)
 
-        # Pilih kamera
-        self.camera_source_label = ctk.CTkLabel(self.dashboard_frame, text="", font=("Segoe UI", 11, "bold"),
-                                                  text_color=COL_TEXT_MUTED)
-        self.camera_source_label.place(x=22, y=306)
+        self.camera_source_label = ctk.CTkLabel(self.dashboard_frame, text="", font=("Segoe UI", 11, "bold"), text_color=COL_TEXT_MUTED)
+        self.camera_source_label.place(x=22, y=255)
 
-        self.cam_dropdown = ctk.CTkOptionMenu(
-            self.dashboard_frame,
-            values=["Kamera 0", "Kamera 1", "Kamera 2", "Kamera 3"],
-            width=INNER_W, height=40, corner_radius=10,
-            font=("Segoe UI", 13),
-            fg_color=COL_BG, button_color=COL_CARD_BORDER, button_hover_color=COL_ACCENT_DIM,
-            dropdown_fg_color=COL_CARD
-        )
-        self.cam_dropdown.place(x=22, y=330)
+        self.cam_dropdown = ctk.CTkOptionMenu(self.dashboard_frame, values=["Kamera 0", "Kamera 1", "Kamera 2", "Kamera 3"], width=INNER_W, height=35, corner_radius=10, font=("Segoe UI", 13), fg_color=COL_BG, button_color=COL_CARD_BORDER, button_hover_color=COL_ACCENT_DIM, dropdown_fg_color=COL_CARD)
+        self.cam_dropdown.place(x=22, y=280)
 
-        # Toggle mirror
         self.mirror_var = ctk.BooleanVar(value=True)
-        self.mirror_switch = ctk.CTkSwitch(
-            self.dashboard_frame,
-            text="",
-            variable=self.mirror_var,
-            font=("Segoe UI", 13),
-            progress_color=COL_ACCENT
-        )
-        self.mirror_switch.place(x=22, y=388)
+        self.mirror_switch = ctk.CTkSwitch(self.dashboard_frame, text="", variable=self.mirror_var, font=("Segoe UI", 13), progress_color=COL_ACCENT)
+        self.mirror_switch.place(x=22, y=330)
 
-        # Tombol mulai/berhenti
-        self.btn_toggle = ctk.CTkButton(self.dashboard_frame, text="",
-                                         font=("Segoe UI", 15, "bold"), corner_radius=12,
-                                         width=INNER_W, height=52, fg_color=COL_SUCCESS,
-                                         hover_color=COL_SUCCESS_HOVER, text_color="#0b0d13",
-                                         command=self.toggle_camera)
-        self.btn_toggle.place(x=22, y=434)
+        self.btn_toggle = ctk.CTkButton(self.dashboard_frame, text="", font=("Segoe UI", 15, "bold"), corner_radius=12, width=INNER_W, height=45, fg_color=COL_SUCCESS, hover_color=COL_SUCCESS_HOVER, text_color="#0b0d13", command=self.toggle_camera)
+        self.btn_toggle.place(x=22, y=370)
 
-        # Tombol clear (gaya outline agar tidak terlalu mencolok)
-        self.btn_clear = ctk.CTkButton(self.dashboard_frame, text="",
-                                        font=("Segoe UI", 13, "bold"), corner_radius=12,
-                                        width=INNER_W, height=42, fg_color="transparent",
-                                        border_width=1, border_color=COL_DANGER,
-                                        text_color=COL_DANGER, hover_color=COL_CARD_BORDER,
-                                        command=self.clear_history)
-        self.btn_clear.place(x=22, y=498)
+        self.btn_clear = ctk.CTkButton(self.dashboard_frame, text="", font=("Segoe UI", 13, "bold"), corner_radius=12, width=INNER_W, height=40, fg_color="transparent", border_width=1, border_color=COL_DANGER, text_color=COL_DANGER, hover_color=COL_CARD_BORDER, command=self.clear_history)
+        self.btn_clear.place(x=22, y=425)
 
         # ---------- RIWAYAT TEKS (BAWAH) ----------
-        HIST_TOP = PANEL_TOP + PANEL_H + 15
-        self.history_frame = ctk.CTkFrame(self.root, width=1020, height=140, corner_radius=16,
-                                           fg_color=COL_CARD, border_width=1, border_color=COL_CARD_BORDER)
-        self.history_frame.place(x=20, y=HIST_TOP)
+        self.history_frame = ctk.CTkFrame(self.root, height=120, corner_radius=16, fg_color=COL_CARD, border_width=1, border_color=COL_CARD_BORDER)
+        self.history_frame.pack(fill="x", padx=20, pady=(5, 20))
+        self.history_frame.pack_propagate(False) 
 
-        self.history_header_label = ctk.CTkLabel(self.history_frame, text="",
-                                                   font=("Segoe UI", 13, "bold"), text_color=COL_TEXT_MUTED)
-        self.history_header_label.place(x=22, y=14)
+        # Ini dia label yang hilang sebelumnya!
+        self.history_header_label = ctk.CTkLabel(self.history_frame, text="", font=("Segoe UI", 13, "bold"), text_color=COL_TEXT_MUTED)
+        self.history_header_label.place(x=22, y=10)
 
-        # Tombol hapus huruf — ikon saja
-        self.btn_backspace = ctk.CTkButton(self.history_frame, text="⌫",
-                                            font=("Segoe UI", 16, "bold"), corner_radius=10,
-                                            width=42, height=32, fg_color=COL_CARD_BORDER,
-                                            hover_color=COL_ACCENT_DIM, text_color=COL_ACCENT,
-                                            command=self.delete_last_char)
-        self.btn_backspace.place(x=956, y=10)
+        self.btn_backspace = ctk.CTkButton(self.history_frame, text="⌫", font=("Segoe UI", 16, "bold"), corner_radius=10, width=42, height=32, fg_color=COL_CARD_BORDER, hover_color=COL_ACCENT_DIM, text_color=COL_ACCENT, command=self.delete_last_char)
+        self.btn_backspace.pack(side="right", anchor="n", padx=15, pady=10)
 
-        self.history_box = ctk.CTkTextbox(self.history_frame, width=976, height=54,
-                                           corner_radius=10, fg_color=COL_BG,
-                                           font=("Consolas", 22), text_color="white",
-                                           wrap="word", activate_scrollbars=False)
-        self.history_box.place(x=22, y=48)
+        self.history_box = ctk.CTkTextbox(self.history_frame, height=50, corner_radius=10, fg_color=COL_BG, font=("Consolas", 22), text_color="white", wrap="word", activate_scrollbars=False)
+        self.history_box.pack(fill="x", padx=22, pady=(35, 5))
         self.history_box.configure(state="disabled")
 
-        self.tip_label = ctk.CTkLabel(self.history_frame, text="",
-                                       font=("Segoe UI", 11), text_color=COL_TEXT_MUTED)
-        self.tip_label.place(x=22, y=112)
+        self.tip_label = ctk.CTkLabel(self.history_frame, text="", font=("Segoe UI", 11), text_color=COL_TEXT_MUTED)
+        self.tip_label.place(x=22, y=90)
 
         self.apply_language()
 
@@ -554,10 +506,17 @@ class ASLDesktopApp:
 
         self.progress_bar.set(min(self.frames_held / self.REQUIRED_FRAMES, 1.0))
 
-        # Render Gambar ke CustomTkinter
+        # Render Kamera Mengikuti Ukuran Window Saat Ini
+        current_w = self.video_frame.winfo_width()
+        current_h = self.video_frame.winfo_height()
+        
+        # Penjaga (Guard) agar tidak error saat aplikasi pertama kali ditarik/dibuka
+        if current_w < 100: current_w = 640
+        if current_h < 100: current_h = 480
+
         img = Image.fromarray(rgb_frame)
-        img = img.resize((640, 480))
-        ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(640, 480))
+        img = img.resize((current_w, current_h))
+        ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(current_w, current_h))
 
         self.video_label.configure(image=ctk_img, text="")
 
